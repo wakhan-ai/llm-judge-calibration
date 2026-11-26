@@ -1,0 +1,94 @@
+{
+  "attempt_status": {
+    "invalid_output": 7,
+    "ok": 73
+  },
+  "conditions": {
+    "plain": {
+      "automatic_coverage": 1,
+      "confusion": {
+        "CONTRADICT": {
+          "CONTRADICT": 8,
+          "SUPPORT": 2
+        },
+        "INSUFFICIENT_EVIDENCE": {
+          "CONTRADICT": 1,
+          "INSUFFICIENT_EVIDENCE": 8,
+          "SUPPORT": 1
+        },
+        "SUPPORT": {
+          "CONTRADICT": 2,
+          "SUPPORT": 8
+        }
+      },
+      "false_acceptance_rate": 0.15,
+      "false_accepts": 3,
+      "gold_non_support": 20,
+      "review_count": 0
+    },
+    "rubric": {
+      "automatic_coverage": 0.9333333333333333,
+      "confusion": {
+        "CONTRADICT": {
+          "CONTRADICT": 7,
+          "INSUFFICIENT_EVIDENCE": 1,
+          "SUPPORT": 2
+        },
+        "INSUFFICIENT_EVIDENCE": {
+          "CONTRADICT": 1,
+          "INSUFFICIENT_EVIDENCE": 7,
+          "REVIEW": 1,
+          "SUPPORT": 1
+        },
+        "SUPPORT": {
+          "CONTRADICT": 2,
+          "REVIEW": 1,
+          "SUPPORT": 7
+        }
+      },
+      "false_acceptance_rate": 0.15,
+      "false_accepts": 3,
+      "gold_non_support": 20,
+      "review_count": 2
+    },
+    "vare": {
+      "automatic_coverage": 0.43333333333333335,
+      "confusion": {
+        "CONTRADICT": {
+          "CONTRADICT": 7,
+          "REVIEW": 1,
+          "SUPPORT": 2
+        },
+        "INSUFFICIENT_EVIDENCE": {
+          "CONTRADICT": 1,
+          "REVIEW": 8,
+          "SUPPORT": 1
+        },
+        "SUPPORT": {
+          "REVIEW": 8,
+          "SUPPORT": 2
+        }
+      },
+      "false_acceptance_rate": 0.15,
+      "false_accepts": 3,
+      "gold_non_support": 20,
+      "review_count": 17
+    }
+  },
+  "excluded_claim_ids": [
+    100,
+    598,
+    800
+  ],
+  "max_tokens": 1024,
+  "model": "openai/gpt-4.1-mini",
+  "n": 30,
+  "planned_n": 30,
+  "request_status": {
+    "invalid_output": 7,
+    "ok": 73
+  },
+  "run_status": "complete",
+  "sample_type": "balanced development feasibility pilot",
+  "seed": 20261126
+}
