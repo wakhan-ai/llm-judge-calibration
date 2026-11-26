@@ -2,6 +2,7 @@
 import argparse
 from collections import Counter
 from datetime import datetime, timezone
+from email.utils import parsedate_to_datetime
 import getpass
 import hashlib
 import json
@@ -16,6 +17,8 @@ from urllib.request import Request, urlopen
 from scifact_retrieval_pilot import index_documents, load_data, referenced_docs, retrieve
 
 LABELS = ("SUPPORT", "CONTRADICT", "INSUFFICIENT_EVIDENCE")
+RETRYABLE_STATUS = {429, 502, 503, 504}
+RETRY_DELAYS = (15, 30, 60)
 SCHEMA = ('Return one JSON object with verdict, probabilities keyed by all three labels '
           'and evidence as a list of [document_id, zero_based_sentence_index] pairs. '
           'Probabilities must sum to one. Cite at least one sentence for a definitive verdict. '
@@ -70,6 +73,40 @@ def parse(content, evidence):
     return value
 
 
+def retry_delay(value, fallback):
+    if not value:
+        return fallback
+    try:
+        return max(fallback, int(value))
+    except ValueError:
+        try:
+            deadline = parsedate_to_datetime(value)
+            return max(fallback, (deadline - datetime.now(timezone.utc)).total_seconds())
+        except (ValueError, TypeError, OverflowError):
+            return fallback
+
+
+def attempt_completion(args, key, payload, evidence):
+    attempt = {"timestamp_utc": datetime.now(timezone.utc).isoformat()}
+    start = time.monotonic()
+    try:
+        raw = request(args.base_url, key, "/chat/completions", payload)
+        attempt["response"] = raw
+        attempt["parsed"] = parse(raw["choices"][0]["message"]["content"], evidence)
+        attempt["status"] = "ok"
+    except HTTPError as error:
+        attempt.update(status="http_error", http_status=error.code)
+        if error.headers and error.headers.get("Retry-After"):
+            attempt["retry_after"] = error.headers["Retry-After"]
+        error.close()
+    except (URLError, TimeoutError):
+        attempt["status"] = "transport_error"
+    except (ValueError, TypeError, KeyError, IndexError):
+        attempt["status"] = "invalid_output"
+    attempt["latency_seconds"] = round(time.monotonic() - start, 3)
+    return attempt
+
+
 def call(args, key, label, system, claim, evidence):
     payload = {
         "model": args.model, "temperature": 0, "stream": False,
@@ -83,17 +120,19 @@ def call(args, key, label, system, claim, evidence):
         "evidence_sha256": digest(evidence), "temperature": payload["temperature"],
     }
     start = time.monotonic()
-    try:
-        raw = request(args.base_url, key, "/chat/completions", payload)
-        result["response"] = raw
-        result["parsed"] = parse(raw["choices"][0]["message"]["content"], evidence)
-        result["status"] = "ok"
-    except HTTPError as error:
-        result.update(status="http_error", http_status=error.code)
-    except (URLError, TimeoutError):
-        result["status"] = "transport_error"
-    except (ValueError, TypeError, KeyError, IndexError):
-        result["status"] = "invalid_output"
+    attempts = []
+    for number in range(len(RETRY_DELAYS) + 1):
+        attempt = attempt_completion(args, key, payload, evidence)
+        attempts.append(attempt)
+        if attempt.get("http_status") not in RETRYABLE_STATUS or number == len(RETRY_DELAYS):
+            break
+        delay = retry_delay(attempt.get("retry_after"), RETRY_DELAYS[number])
+        if delay > 60:
+            break
+        attempt["backoff_seconds"] = delay
+        time.sleep(delay)
+    result.update(attempt)
+    result["attempts"] = attempts
     result["latency_seconds"] = round(time.monotonic() - start, 3)
     return result
 
@@ -140,12 +179,15 @@ def run(args, key, selected, index, corpus):
         ranked = retrieve(claim["claim"], *index)[:5]
         evidence = [{"doc_id": doc_id, "title": corpus[doc_id]["title"],
                      "sentences": list(enumerate(corpus[doc_id]["abstract"]))} for doc_id in ranked]
-        calls = {name: call(args, key, name, prompt, claim["claim"], evidence)
-                 for name, prompt in PROMPTS.items()}
+        calls = {}
+        for name, prompt in PROMPTS.items():
+            calls[name] = call(args, key, name, prompt, claim["claim"], evidence)
+            if calls[name].get("http_status") == 429:
+                break
         decisions = {name: result.get("parsed", {}).get("verdict", "REVIEW")
                      for name, result in calls.items()}
         decisions["vare"] = "REVIEW"
-        if decisions["rubric"] in LABELS[:2]:
+        if decisions.get("rubric") in LABELS[:2]:
             selected_ids = {tuple(pair) for pair in calls["rubric"]["parsed"]["evidence"]}
             cited = [{**doc, "sentences": [row for row in doc["sentences"]
                                           if (doc["doc_id"], row[0]) in selected_ids]}
@@ -155,10 +197,13 @@ def run(args, key, selected, index, corpus):
                 decisions["vare"] = decisions["rubric"]
         record = {"claim_id": claim["id"], "gold": gold_label(claim), "ranked_doc_ids": ranked,
                   "calls": calls, "decisions": decisions}
-        records.append(record)
         print(canonical(record), file=args.records, flush=True)
+        if any(result.get("http_status") == 429 for result in calls.values()):
+            print("Provider rate limit persisted. Stopping with a partial run.", flush=True)
+            return records, "rate_limited"
+        records.append(record)
         print(f"{len(records)}/{len(selected)}: claim {claim['id']}", flush=True)
-    return records
+    return records, "complete"
 
 
 def main():
@@ -196,11 +241,16 @@ def main():
         parser.error("model ID was not returned by Open WebUI")
     args.out.mkdir(parents=True, exist_ok=False)
     with (args.out / "responses.jsonl").open("w", encoding="utf-8") as args.records:
-        results = run(args, key, selected, index_documents(corpus, True),
+        results, status = run(args, key, selected, index_documents(corpus, True),
                       {doc["doc_id"]: doc for doc in corpus})
     summary = {"sample_type": "balanced development feasibility pilot", "seed": args.seed,
-               "model": args.model, "n": len(results), "conditions": summarize(results),
-               "request_status": Counter(call["status"] for row in results for call in row["calls"].values())}
+               "model": args.model, "n": len(results), "planned_n": len(selected), "run_status": status,
+               "conditions": summarize(results) if results else {},
+               "request_status": Counter(call["status"] for row in results for call in row["calls"].values()),
+               "attempt_status": Counter(
+                   str(attempt.get("http_status", attempt["status"]))
+                   for row in results for call in row["calls"].values() for attempt in call["attempts"]
+               )}
     (args.out / "summary.json").write_text(canonical(summary) + "\n", encoding="utf-8")
 
 
