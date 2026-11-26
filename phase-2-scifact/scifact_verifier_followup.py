@@ -8,7 +8,7 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import scifact_webui_pilot as pilot
-from scifact_retrieval_pilot import index_documents, load_data, retrieve
+from scifact_retrieval_pilot import index_documents, load_data, referenced_docs, retrieve
 
 VERIFIER = ("Assess whether the supplied evidence supports, contradicts, or is insufficient "
             "for the claim. Check direction, population and endpoint. Assess each citation in context.")
@@ -33,6 +33,11 @@ def compare(rows, budget):
         counts = Counter((r["gold"], r["calls"][base].get("parsed", {}).get("verdict", "UNRESOLVED"))
                          for r in auto)
         output[name] = {"reviewed_ids": sorted(reviewed),
+                        "baseline_false_accepts": sum(
+                            r["gold"] != "SUPPORT"
+                            and r["calls"][base].get("parsed", {}).get("verdict") == "SUPPORT"
+                            for r in rows
+                        ),
                         "false_accepts": sum(counts[label, "SUPPORT"] for label in pilot.LABELS[1:]),
                         "gold_non_support": sum(r["gold"] != "SUPPORT" for r in rows),
                         "true_accepts": counts["SUPPORT", "SUPPORT"],
@@ -43,7 +48,8 @@ def compare(rows, budget):
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)
-    parser.add_argument("--pilot", type=Path, required=True)
+    parser.add_argument("--pilot", type=Path, action="append", required=True)
+    parser.add_argument("--document-disjoint", action="store_true")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--verifier-model", required=True)
     parser.add_argument("--per-label", type=int, default=5)
@@ -52,13 +58,23 @@ def main():
     judge = "openai/gpt-4.1-mini"
     if args.verifier_model == judge or args.per_label < 1:
         parser.error("provide a distinct verifier and a positive sample size")
-    previous = [json.loads(line) for line in args.pilot.read_text(encoding="utf-8").splitlines()]
+    previous = [json.loads(line) for path in args.pilot
+                for line in path.read_text(encoding="utf-8").splitlines()]
     excluded = TUNING_IDS | {row["claim_id"] for row in previous}
     corpus, train, dev = load_data(args.archive)
-    selected = pilot.sample_dev(train, [r for r in dev if r["id"] not in excluded],
-                                args.per_label, 20261128)
+    candidates = [r for r in dev if r["id"] not in excluded]
+    if args.document_disjoint:
+        seen = referenced_docs(train) | referenced_docs([r for r in dev if r["id"] in excluded])
+        selected = sorted((r for r in candidates if referenced_docs([r]).isdisjoint(seen)),
+                          key=lambda r: r["id"])
+    else:
+        selected = pilot.sample_dev(train, candidates, args.per_label, 20261128)
+    if not selected:
+        parser.error("no eligible claims")
     manifest = {"judge": judge, "verifier": args.verifier_model, "seed": 20261128,
                 "claim_ids": [r["id"] for r in selected], "excluded_ids": sorted(excluded),
+                "reference_counts": Counter(pilot.gold_label(r) for r in selected),
+                "document_disjoint": args.document_disjoint,
                 "review_budget": len(selected) // 5, "max_tokens": 1024}
     if args.dry_run:
         print(pilot.canonical(manifest))

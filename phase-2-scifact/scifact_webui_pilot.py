@@ -10,6 +10,7 @@ import math
 import os
 from pathlib import Path
 import random
+import re
 import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
@@ -55,6 +56,11 @@ def request(base, key, endpoint, payload=None):
 
 
 def parse(content, evidence):
+    if isinstance(content, str):
+        fenced = re.fullmatch(r"\s*`{3}(?:json)?[ \t]*\r?\n(.*?)\r?\n`{3}\s*",
+                              content, re.IGNORECASE | re.DOTALL)
+        if fenced:
+            content = fenced.group(1)
     value = json.loads(content)
     if not isinstance(value, dict):
         raise ValueError("expected an object")
