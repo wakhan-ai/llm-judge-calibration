@@ -26,3 +26,17 @@ Use the UI to inspect a single example and confirm prompt formatting. For the pa
 Prepare the top-five evidence packet once per claim with stable document and sentence IDs. Send the same packet with each prompt condition in a fresh request. Log claim ID, packet hash, prompt hash, requested and returned model identifiers, decoding settings, UTC timestamp, latency, status and raw output. Keep gold labels in a separate scoring file. Apply the protocol’s validity checks and review rules before calculating metrics. Record any provider retry and rate limit separately from judge errors. Follow the [experiment protocol](PROTOCOL.md) for split design, controls and outcome definitions.
 
 References: [Open WebUI installation](https://docs.openwebui.com/getting-started/quick-start/), [provider connections](https://docs.openwebui.com/getting-started/quick-start/connect-a-provider/starting-with-openai-compatible/), [API endpoints](https://docs.openwebui.com/reference/api-endpoints/), [OpenRouter model catalog](https://openrouter.ai/inclusionai).
+
+## Run the SciFact feasibility pilot
+
+From the `phase-2-scifact` directory with Python 3.10 or newer:
+
+```powershell
+python scifact_webui_pilot.py data/scifact-data.tar.gz --list-models
+python scifact_webui_pilot.py data/scifact-data.tar.gz --model 'inclusionai/ling-3.2-flash:free' --out runs/format-check --per-label 1
+python scifact_webui_pilot.py data/scifact-data.tar.gz --model 'inclusionai/ling-3.2-flash:free' --out runs/paired-pilot
+```
+
+Use the exact ID returned by model discovery, including any prefix configured in WebUI. The runner prompts for the local WebUI key without echoing it unless `OPEN_WEBUI_API_KEY` is already set. Use a fresh output directory per attempt. Check the format-run response status before starting the full pilot. Keep the format check outside the 30-claim pilot sample by giving it a different seed and checking claim IDs for overlap if the result will inform prompt changes.
+
+The runner writes raw responses and per-claim decisions to `responses.jsonl` and confusion matrices, false acceptance counts, review coverage and call status to `summary.json`. The VARE feasibility arm uses a separate blinded call to the same model over rubric-cited sentences. Report that design choice and shared-model dependence. The 30-claim sample is balanced development data filtered for cited/annotated document overlap with training. This is a feasibility sample and uses neither the frozen grouped holdout nor a fitted calibrator. The raw pilot review rates may differ by arm. Matched-budget comparisons remain part of the confirmatory protocol.
