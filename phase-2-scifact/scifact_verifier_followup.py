@@ -5,6 +5,7 @@ import getpass
 import json
 import os
 from pathlib import Path
+import random
 from types import SimpleNamespace
 
 import scifact_webui_pilot as pilot
@@ -17,7 +18,10 @@ TUNING_IDS = {100, 598, 800}
 
 def compare(rows, budget):
     output = {}
-    for name in ("plain", "rubric", "same_cited", "same_full", "other_cited", "other_full"):
+    arms = ("plain", "rubric", "same_cited", "same_full", "other_cited", "other_full")
+    if any("stronger_full" in row["calls"] for row in rows):
+        arms += ("stronger_full",)
+    for name in arms:
         def priority(row):
             calls = row["calls"]
             base = calls["plain" if name == "plain" else "rubric"].get("parsed", {})
@@ -40,6 +44,13 @@ def compare(rows, budget):
                         ),
                         "false_accepts": sum(counts[label, "SUPPORT"] for label in pilot.LABELS[1:]),
                         "gold_non_support": sum(r["gold"] != "SUPPORT" for r in rows),
+                        "contradiction_false_accepts": counts["CONTRADICT", "SUPPORT"],
+                        "contradictions": sum(r["gold"] == "CONTRADICT" for r in rows),
+                        "baseline_contradiction_false_accepts": sum(
+                            r["gold"] == "CONTRADICT"
+                            and r["calls"][base].get("parsed", {}).get("verdict") == "SUPPORT"
+                            for r in rows
+                        ),
                         "true_accepts": counts["SUPPORT", "SUPPORT"],
                         "unresolved_outside_budget": sum(counts[label, "UNRESOLVED"] for label in pilot.LABELS)}
     return output
@@ -49,22 +60,34 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("archive", type=Path)
     parser.add_argument("--pilot", type=Path, action="append", required=True)
-    parser.add_argument("--document-disjoint", action="store_true")
+    cohort = parser.add_mutually_exclusive_group()
+    cohort.add_argument("--document-disjoint", action="store_true")
+    cohort.add_argument("--contradiction-enriched", action="store_true")
     parser.add_argument("--out", type=Path, required=True)
     parser.add_argument("--verifier-model", required=True)
+    parser.add_argument("--stronger-verifier")
     parser.add_argument("--per-label", type=int, default=5)
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args()
     judge = "openai/gpt-4.1-mini"
     if args.verifier_model == judge or args.per_label < 1:
         parser.error("provide a distinct verifier and a positive sample size")
+    if args.stronger_verifier in {judge, args.verifier_model}:
+        parser.error("the stronger verifier must be a third model")
     previous = [json.loads(line) for path in args.pilot
                 for line in path.read_text(encoding="utf-8").splitlines()]
     excluded = TUNING_IDS | {row["claim_id"] for row in previous}
     corpus, train, dev = load_data(args.archive)
     candidates = [r for r in dev if r["id"] not in excluded]
-    if args.document_disjoint:
-        seen = referenced_docs(train) | referenced_docs([r for r in dev if r["id"] in excluded])
+    seen = referenced_docs(train) | referenced_docs([r for r in dev if r["id"] in excluded])
+    if args.contradiction_enriched:
+        rng = random.Random(20261128)
+        selected = [r for r in candidates if pilot.gold_label(r) == "CONTRADICT"]
+        for label in ("SUPPORT", "INSUFFICIENT_EVIDENCE"):
+            pool = [r for r in candidates if pilot.gold_label(r) == label]
+            selected.extend(rng.sample(pool, min(len(pool), args.per_label)))
+        rng.shuffle(selected)
+    elif args.document_disjoint:
         selected = sorted((r for r in candidates if referenced_docs([r]).isdisjoint(seen)),
                           key=lambda r: r["id"])
     else:
@@ -75,6 +98,11 @@ def main():
                 "claim_ids": [r["id"] for r in selected], "excluded_ids": sorted(excluded),
                 "reference_counts": Counter(pilot.gold_label(r) for r in selected),
                 "document_disjoint": args.document_disjoint,
+                "contradiction_enriched": args.contradiction_enriched,
+                "document_overlap_counts": Counter(
+                    pilot.gold_label(r) for r in selected if referenced_docs([r]) & seen
+                ),
+                "stronger_verifier": args.stronger_verifier, "stronger_max_tokens": 2048,
                 "review_budget": len(selected) // 5, "max_tokens": 1024}
     if args.dry_run:
         print(pilot.canonical(manifest))
@@ -82,10 +110,14 @@ def main():
     key = os.getenv("OPEN_WEBUI_API_KEY") or getpass.getpass("Local Open WebUI API key: ").strip()
     base = "http://127.0.0.1:8080/api/v1"
     models = {r["id"] for r in pilot.request(base, key, "/models")["data"]}
-    if not {judge, args.verifier_model} <= models:
-        parser.error("Both fixed model IDs must be visible in Open WebUI")
+    required = {judge, args.verifier_model}
+    if args.stronger_verifier:
+        required.add(args.stronger_verifier)
+    if required - models:
+        parser.error(f"Open WebUI is missing: {', '.join(sorted(required - models))}")
     primary = SimpleNamespace(base_url=base, model=judge, max_tokens=1024)
     alternate = SimpleNamespace(base_url=base, model=args.verifier_model, max_tokens=1024)
+    stronger = SimpleNamespace(base_url=base, model=args.stronger_verifier, max_tokens=2048)
     index = index_documents(corpus, True)
     docs = {d["doc_id"]: d for d in corpus}
     args.out.mkdir(parents=True)
@@ -106,7 +138,13 @@ def main():
                 for name, model, packet in (("same_cited", primary, cited), ("same_full", primary, evidence),
                                             ("other_cited", alternate, cited), ("other_full", alternate, evidence)):
                     calls[name] = pilot.call(model, key, name, VERIFIER, claim["claim"], packet)
-            row = {"claim_id": claim["id"], "gold": pilot.gold_label(claim), "calls": calls}
+                if args.stronger_verifier:
+                    calls["stronger_full"] = pilot.call(
+                        stronger, key, "stronger_full", VERIFIER, claim["claim"], evidence
+                    )
+            row = {"claim_id": claim["id"], "gold": pilot.gold_label(claim), "calls": calls,
+                   "gold_document_retrieved": bool(set(map(int, claim["evidence"])) &
+                                                   {doc["doc_id"] for doc in evidence})}
             print(pilot.canonical(row), file=output, flush=True)
             if any(c.get("http_status") == 429 for c in calls.values()):
                 raise SystemExit("Provider throttled the run. Partial responses were saved.")
