@@ -43,4 +43,4 @@ Actual deterministic number/endpoint/unit checks; controlled evidence-removal an
 
 ## LinkedIn research linkage
 
-Published on LinkedIn: [LinkedIn article](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/) · [Illustrated announcement](https://www.linkedin.com/feed/update/urn:li:share:7532260344161902592/). The Phase II+ roadmap describes planned experiments.
+Published on LinkedIn: [LinkedIn article](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/) · [LinkedIn announcement](https://www.linkedin.com/feed/update/urn:li:ugcPost:7532259796884975616/). The Phase II+ roadmap describes planned experiments.

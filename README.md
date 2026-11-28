@@ -4,7 +4,7 @@ Reproducible research across a **synthetic calibration demonstration (Phase I)**
 
 ## Research articles and evidence
 
-- **Current article:** [Beyond Agreement: What Real LLM Judge Experiments Reveal About Evidence, Verification and Risk](phase-2-scifact/articles/BEYOND-AGREEMENT.md) — [LinkedIn article](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/) · [Illustrated announcement](https://www.linkedin.com/feed/update/urn:li:share:7532260344161902592/).
+- **Current article:** [Beyond Agreement: What Real LLM Judge Experiments Reveal About Evidence, Verification and Risk](phase-2-scifact/articles/BEYOND-AGREEMENT.md) — [LinkedIn article](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/) · [LinkedIn announcement](https://www.linkedin.com/feed/update/urn:li:ugcPost:7532259796884975616/).
 - **Next experimental direction:** [VARE Research Phase II+ — Completing the Missing Evidence Before Publication](phase-2-scifact/articles/VARE-PHASE-II-PLUS.md) — explicit untested hypotheses, controls, evaluation gates and reproducibility requirements.
 - **Research implementation and results:** [SciFact Phase II](phase-2-scifact/README.md); [study protocol](phase-2-scifact/PROTOCOL.md); [dataset provenance and licences](phase-2-scifact/DATA.md); [experiment evidence](phase-2-scifact/evidence/).
 
