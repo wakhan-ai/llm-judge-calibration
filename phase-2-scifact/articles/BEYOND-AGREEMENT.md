@@ -141,7 +141,7 @@ That distinction is important.
 **Retrieving the right document is a necessary part of many evidence-based evaluations, but it does not guarantee the right conclusion.**
 
 
-![Figure 1. Top-five annotated-document retrieval](figures/ba-figure-1.png)
+![Figure 1. Improving evidence retrieval](figures/ba-figure-1.png)
 
 
 ## 5. Experiment B: Does adding an independent verifier reduce false acceptance?
@@ -189,7 +189,7 @@ The implication was clear.
 A second model call can add cost, reduce automatic coverage and still reproduce the original judge's mistakes.
 
 
-![Figure 2. Review workload in the 30-claim pilot](figures/ba-figure-2.png)
+![Figure 2. Additional verification does not guarantee improvement](figures/ba-figure-2.png)
 
 
 ## 6. Experiment C: Does verifier independence matter?
@@ -252,7 +252,6 @@ The appropriate conclusion is narrower:
 Whether the improvement generalises remains an open question.
 
 
-![Figure 3. Residual false acceptances at a matched review budget](figures/ba-figure-3.png)
 
 
 ## 8. Experiment E: Stress-testing contradicted scientific claims
@@ -302,6 +301,9 @@ The experiment therefore highlighted an important distinction:
 That is useful operational behaviour, but it should not be confused with improved reasoning accuracy.
 
 The 97-claim subset also shared evidence-document relationships with training or earlier experimental claims. Consequently, it is best interpreted as a targeted development stress test, not independent evidence of broad generalisation.
+
+
+![Figure 3. Contradiction stress test at matched review budgets](figures/ba-figure-3.png)
 
 ## 9. What the results tell us about calibration and risk
 
