@@ -1,20 +1,46 @@
-# Phase II SciFact evaluation
+# Phase II — SciFact scientific-claim evaluation
 
-This package records the verified benchmark source, completed retrieval experiment, and proposed judge experiment. Run the retrieval baseline from this directory with Python 3.10 or later. The retrieval script uses only the standard library.
+**Research article:** [Beyond Agreement: What Real LLM Judge Experiments Reveal About Evidence, Verification and Risk](articles/BEYOND-AGREEMENT.md)  
+**Proposed next experiments:** [VARE Research Phase II+](articles/VARE-PHASE-II-PLUS.md)  
+**Source and licences:** [DATA.md](DATA.md) · **Experimental protocol:** [PROTOCOL.md](PROTOCOL.md)
+
+This package documents the public SciFact dataset, reproducible lexical retrieval, actual LLM judging and second-verifier experiments, and limitations that motivate the next phase. **It does not establish a validated risk-sensitive regulatory decision system.**
+
+## Reproduce the retrieval baseline
+
+Run from this directory in Python 3.10+ (standard library):
 
 ```sh
 python scifact_retrieval_pilot.py data/scifact-data.tar.gz
 ```
 
-See [PROTOCOL.md](PROTOCOL.md) for the comparison design and [DATA.md](DATA.md) for provenance. See [OPEN-WEBUI.md](OPEN-WEBUI.md) for the Windows setup, observed provider smoke test, and path to a repeatable API run. Machine-readable retrieval results are in [evidence/retrieval-results.json](evidence/retrieval-results.json).
+The original SciFact archive contains **5,183 abstracts, 809 labelled training claims, 300 labelled development claims and 300 test claims with withheld labels**. Development includes 124 SUPPORT, 64 CONTRADICT and 112 without annotated evidence. Of 188 evidence-bearing development claims, title-only top-five TF-IDF retrieved an annotated document for **115**, versus **168** for title plus abstract (**+28.2 percentage points**); see [retrieval-results.json](evidence/retrieval-results.json). Retrieval hit rates do **not** measure judge accuracy.
 
-## Observed evidence
+## Recorded model-based experiments
 
-- The archive contained 5,183 abstracts, 809 labelled training claims, 300 labelled development claims, and 300 test claims without public reference labels.
-- The development set contains 124 supported claims, 64 contradicted claims, and 112 claims with no annotated evidence.
-- Among the 188 development claims with annotated evidence, title-only TF-IDF returned at least one annotated document in the top five for 115 claims. Title plus abstract did so for 168 claims, a gain of 28.2 percentage points. The paired claim-bootstrap interval is 21.8 to 35.1 points. That interval assumes claim-level resampling and may be too narrow when claims share a document.
-- Title plus abstract retrieved an annotated document for 53 of 64 contradicted claims. The retrieval experiment used all abstracts as the search index and used no supervised training.
-- Training and development share 181 cited or annotated evidence documents. Of the 300 development claims, 104 have no such overlap with training, including 64 of the 188 evidence-bearing claims.
-- Open WebUI on Windows returned "OpenRouter connection works" from inclusionAI Ling 3.2 Flash (free) in response to a short test prompt. This is an observed connectivity check. No SciFact verdicts, calibration fits, or VARE comparisons were run.
+| Experiment | Subset | Main observation | Evidence |
+|---|---|---|---|
+| Initial pilot | 30 balanced development claims | Plain, rubric and same-model verifier retained 3/20 false automatic accepts; verifier increased review to 17/30 | [Paired pilot](evidence/PAIRED-PILOT.md) |
+| Cross-verifier follow-up | 15 development claims | All arms had zero non-support false accepts; unable to test correction of those errors | [Follow-up](evidence/VERIFIER-FOLLOWUP.md) |
+| Document-disjoint evaluation | 41 claims, 8 review slots | Rubric 2/20 false accepts; Gemini Flash with full abstracts 1/20, a one-case difference | [Holdout](evidence/VERIFIER-HOLDOUT.md) |
+| Contradiction stress test | 97 development claims, 19 review slots | Rubric retained 3/47 contradiction false accepts; same-model cited verifier retained 0/47, but the plain judge also retained 0/47 | [Stress test](evidence/CONTRADICTION-STUDY.md) |
 
-The retrieval hit rates concern annotated document retrieval. They measure neither sentence-level evidence selection nor verifier accuracy. The 112 claims with no annotated evidence are outside the retrieval hit-rate denominator.
+The 41-claim document-disjoint subset contains just **one contradicted reference claim**. The 97-claim stress subset **shares evidence-document relationships** with earlier data; it is not a pristine final holdout. Model truncation, JSON failures and citation failures can cause human deferrals without semantic error detection. Neither these samples nor their decision policies prove general superiority.
+
+## Executable tools and study details
+
+- [Lexical retrieval runner](scifact_retrieval_pilot.py)
+- [LLM pilot runner](scifact_webui_pilot.py)
+- [Verifier follow-up runner](scifact_verifier_followup.py)
+- [Windows/Open WebUI/OpenRouter setup](OPEN-WEBUI.md)
+- [Machine-readable summaries and manifests](evidence/)
+- [Dataset provenance and licensing](DATA.md)
+- [Research protocol](PROTOCOL.md)
+
+## Pending — the Phase II+ agenda
+
+Actual deterministic number/endpoint/unit checks; controlled evidence-removal and redundancy experiments; independent severity rating; grouped calibration and cost-sensitive review; strong paired ablation and external FEVEROUS evaluation remain uncompleted. The [Phase II+ document](articles/VARE-PHASE-II-PLUS.md) records the required controls and publication decision gates.
+
+## LinkedIn research linkage
+
+The manuscript for *Beyond Agreement* is committed here so it can be cross-linked before its LinkedIn publication. Add its actual published LinkedIn article URL in this section and the article header after publication; do not guess the URL. The Phase II+ roadmap is presently a future test programme, not an asserted outcome.
