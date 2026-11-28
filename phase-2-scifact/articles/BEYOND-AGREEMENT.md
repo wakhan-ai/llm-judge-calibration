@@ -1,7 +1,7 @@
 # Beyond Agreement: What Real LLM Judge Experiments Reveal About Evidence, Verification and Risk
 
 **Status:** Public research article manuscript — evidence-backed experimental update; not an assertion that VARE is validated.  
-**Publication:** LinkedIn URL to be added after publication (do not substitute a guessed URL).  
+**Publication:** [LinkedIn article](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/) · [Illustrated announcement](https://www.linkedin.com/feed/update/urn:li:share:7532260344161902592/)  
 **Companion:** [VARE Research Phase II+ — Completing the Missing Evidence Before Publication](VARE-PHASE-II-PLUS.md)  
 **Repository:** [LLM Judge Calibration](https://github.com/wakhan-ai/llm-judge-calibration) · [SciFact experiments](../README.md)  
 **Dataset:** [SciFact](https://github.com/allenai/scifact); see [dataset provenance](../DATA.md).

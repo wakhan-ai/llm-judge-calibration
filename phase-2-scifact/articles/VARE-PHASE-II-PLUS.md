@@ -93,7 +93,6 @@ A claims-based VARE superiority paper is appropriate **only if** an untouched gr
 ## Links to LinkedIn research articles
 
 - Earlier LinkedIn article: *Who Judges the AI Judge?* — add its actual URL when confirmed.
-- Current LinkedIn article: *Beyond Agreement: What Real LLM Judge Experiments Reveal About Evidence, Verification and Risk* — add its actual URL after publication.
+- Current article: [Beyond Agreement: What Real LLM Judge Experiments Reveal About Evidence, Verification and Risk](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/).
 - Proposed subsequent article: *VARE Research Phase II+ — Completing the Missing Evidence Before Publication* — this is a **research programme**, not a completed experimental report. Update with measured findings and the eventual article URL after experiments.
 
-No LinkedIn URL is inferred or fabricated. Internal links above remain functional regardless of publication timing.

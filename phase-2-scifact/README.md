@@ -43,4 +43,4 @@ Actual deterministic number/endpoint/unit checks; controlled evidence-removal an
 
 ## LinkedIn research linkage
 
-The manuscript for *Beyond Agreement* is committed here so it can be cross-linked before its LinkedIn publication. Add its actual published LinkedIn article URL in this section and the article header after publication; do not guess the URL. The Phase II+ roadmap is presently a future test programme, not an asserted outcome.
+Published on LinkedIn: [LinkedIn article](https://www.linkedin.com/pulse/beyond-agreement-what-real-llm-judge-experiments-reveal-waheed-abbas-lyfne/) · [Illustrated announcement](https://www.linkedin.com/feed/update/urn:li:share:7532260344161902592/). The Phase II+ roadmap describes planned experiments.
